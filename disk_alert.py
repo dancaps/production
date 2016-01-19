@@ -15,7 +15,7 @@ import smtplib, os, time
 
 #if used space is >= these variables an alert will be sent. Warning always needs to be <= error.
 warning_percent_threshold = 70
-error_percent_threshold = 95
+error_percent_threshold = 75
 #empty message
 msg = ''
 #add the filesystem name to the exclusion list if you need it ignored
@@ -23,15 +23,15 @@ exclusion = ['/dev/sr0']
 #warning flag to send alert
 warning = False
 #amount of time between warning emails
-warning_sleep_time_second = 1800#21600
+warning_sleep_time_second = 21600
 #error flag to send alert
 error = False
 #amount of time between error alerts
-error_sleep_time_second = 900#3600
+error_sleep_time_second = 3600
 #start time of the script
 start_time = time.time()
 #automatically kills the script after this many seconds. This allows the script to die and cron to spawn a new instance.
-run_time_second = 3500
+run_time_second = 84600
 
 def get_hostname():
     #returns the hostname
@@ -75,31 +75,27 @@ def get_filesystem():
 def low_disk_error(disk_info):
     #determines if the used disk space is higher than the error and warning thresholds and returns true or false
     if (disk_info[4] > warning_percent_threshold) and (disk_info[4] >= error_percent_threshold):
-        print "LD error True returned"
         return True
     else:
-        print "LD error False returned"
         return False
 
 def low_disk_warning(disk_info):
     #determines if the used disk space is higher than the warning threshold and lower than the error threshold
     #returns true or false
     if (disk_info[4] >= warning_percent_threshold) and (disk_info[4] < error_percent_threshold):
-        print "LD warning True returned"
         return True
     else:
-        print "LD warning False returned"
         return False
 
 def send_mail(usr_msg):
     #creates and sends email through the markit smtp server
     usr_smtp_server = 'ussmtp.markit.partners' #'appsmtp1.markit.partners'
     usr_to = 'daniel.caperton@markit.com' #'MK-GTSSolutionsEngineeringVirtualization@markit.com'
-    usr_from = 'vcs-bld1@markit.com'
+    usr_from = 'vcs-lon6@markit.com'
     if error:
-        usr_subject = 'TEST EMAIL :: ERROR :: LOW DISK SPACE ALERT ON ' + str(get_hostname()).upper()
+        usr_subject = 'TESTING::ERROR :: LOW DISK SPACE ALERT ON ' + str(get_hostname()).upper()
     elif warning:
-        usr_subject = 'TEST EMAIL :: WARNING :: LOW DISK SPACE ALERT ON ' + str(get_hostname()).upper()
+        usr_subject = 'TESTING::WARNING :: LOW DISK SPACE ALERT ON ' + str(get_hostname()).upper()
     else:
         usr_subject = 'THERE IS AN ERROR WITH THE DISK_ALERT.PY SCRIPT ON ' + str(get_hostname()).upper()
     mail = smtplib.SMTP(usr_smtp_server, 25)
@@ -114,7 +110,6 @@ def check():
     global warning, error, msg
     my_disks = get_filesystem()
     for d in my_disks:
-        print d
         if d[0] in exclusion:
             continue
         if low_disk_warning(d) == True:
@@ -123,15 +118,12 @@ def check():
         if low_disk_error(d) == True:
             msg += 'Filesystem: ' + str(d[0]) + ' is low on freespace: ' + str(d[4]) + '% in use.\n\n'
             error = True
-    print (start_time - time.time()) * -1
     if (start_time - time.time()) * -1 > run_time_second:
         warning = False
         error = False
 
 #main
 check()
-print "Warning Variable =", warning
-print "Error Variable =", error
 
 while warning == True or error == True:
 #while the warning or error flags are true and email is triggered. The script sleeps based on the alert type and runs
@@ -139,7 +131,6 @@ while warning == True or error == True:
     if error == True:
         msg = 'Hostname: ' + get_hostname() + 'The current ERROR alert threshold is set at ' + str(error_percent_threshold) + '% used space.\n\n' + msg
         send_mail(msg)
-        print "Error Email Sent. Sleeping for", error_sleep_time_second, "seconds."
         time.sleep(error_sleep_time_second)
         error = False
         msg = ''
@@ -148,7 +139,6 @@ while warning == True or error == True:
     if warning == True:
         msg = 'Hostname: ' + get_hostname() + 'The current WARNING alert threshold is set at ' + str(warning_percent_threshold) + '% used space.\n\n' + msg
         send_mail(msg)
-        print "Warning Email Sent. Sleeping for", warning_sleep_time_second, "seconds."
         time.sleep(warning_sleep_time_second)
         warning = False
         msg = ''
