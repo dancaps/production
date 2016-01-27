@@ -14,8 +14,8 @@
 import smtplib, os, time
 
 #if used space is >= these variables an alert will be sent. Warning always needs to be <= error.
-warning_percent_threshold = 70
-error_percent_threshold = 75
+warning_percent_threshold = 90
+error_percent_threshold = 95
 #empty message
 msg = ''
 #add the filesystem name to the exclusion list if you need it ignored
@@ -31,7 +31,7 @@ error_sleep_time_second = 3600
 #start time of the script
 start_time = time.time()
 #automatically kills the script after this many seconds. This allows the script to die and cron to spawn a new instance.
-run_time_second = 84600
+run_time_second = 83700
 
 def get_hostname():
     #returns the hostname
@@ -90,14 +90,14 @@ def low_disk_warning(disk_info):
 def send_mail(usr_msg):
     #creates and sends email through the markit smtp server
     usr_smtp_server = 'ussmtp.markit.partners' #'appsmtp1.markit.partners'
-    usr_to = 'daniel.caperton@markit.com' #'MK-GTSSolutionsEngineeringVirtualization@markit.com'
+    usr_to = 'MK-GTSSolutionsEngineeringVirtualization@markit.com'
     usr_from = 'vcs-lon6@markit.com'
     if error:
-        usr_subject = 'TESTING::ERROR :: LOW DISK SPACE ALERT ON ' + str(get_hostname()).upper()
+        usr_subject = 'ERROR :: LOW DISK SPACE ALERT ON ' + str(get_hostname()).upper()
     elif warning:
-        usr_subject = 'TESTING::WARNING :: LOW DISK SPACE ALERT ON ' + str(get_hostname()).upper()
+        usr_subject = 'WARNING :: LOW DISK SPACE ALERT ON ' + str(get_hostname()).upper()
     else:
-        usr_subject = 'THERE IS AN ERROR WITH THE DISK_ALERT.PY SCRIPT ON ' + str(get_hostname()).upper()
+        usr_subject = 'INFORMATION :: DISK_ALERT.PY SCRIPT ON ' + str(get_hostname()).upper()
     mail = smtplib.SMTP(usr_smtp_server, 25)
     header = 'To: ' + usr_to + '\n' + 'From: ' + usr_from + '\n' + 'Subject: ' + usr_subject + '\n'
     msg = header + '\n' + usr_msg + '\n'
@@ -123,6 +123,7 @@ def check():
         error = False
 
 #main
+#send_mail('The cron has spawned v2!')
 check()
 
 while warning == True or error == True:
@@ -144,3 +145,5 @@ while warning == True or error == True:
         msg = ''
         check()
         continue
+
+#send_mail('The cron has died v2!')
