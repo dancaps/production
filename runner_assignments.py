@@ -1,7 +1,8 @@
-#! /usr/bin/python
+#! /usr/bin/python3
 
 # This assigns relay runners to their leg assignments randomly.
 
+from __future__ import print_function
 import random, time
 
 runner_names = []
@@ -11,7 +12,7 @@ runner_assignments = {}
 while True:
     while True:
         try:
-            number_runners = int(raw_input("Enter the number of runners on your team [1 thru 16]: "))
+            number_runners = int(input("Enter the number of runners on your team [1 thru 16]: "))
             break
         except ValueError:
             print("Invalid Entry... Please try again.")
@@ -25,7 +26,7 @@ print(" ")
 # Creates a list of runner names
 counter = int(number_runners)
 while counter > 0:
-    runner_name = raw_input("Enter the name of a runner: ")
+    runner_name = input("Enter the name of a runner: ")
     if len(runner_name) > 0:
         runner_names.append(runner_name)
         counter -= 1
@@ -33,7 +34,7 @@ while counter > 0:
         print("Invalid Name... Please try again.")
 
 print(" ")
-print("Generating leg assignments."),
+print("Generating leg assignments.", end="", flush=True)
 
 # Assigns a runner to a random number
 for name in runner_names:
@@ -42,14 +43,15 @@ for name in runner_names:
         leg_number = random.randint(1, number_runners)
     runner_assignments.update({leg_number: name})
     time.sleep(2)
-    print("."),
+    print(".", end="", flush=True)
 
 # Prints the runner # and their name
 print(" ")
 print(" " * 25)
-print "{:<15} {}".format('Runner #', 'Name')
-print "{:<15} {}".format('--------', '----')
-for k, v in sorted(runner_assignments.iteritems()):
-    print "{:<15} {}".format(k, v.capitalize())
+print("{:<15} {}".format('Runner #', 'Name'))
+print("{:<15} {}".format('--------', '----'))
+for k, v in sorted(runner_assignments.items()):
+    print("{:<15} {}".format(k, v.capitalize()))
 print(" ")
 print("Thank you for using my program!")
+print(" ")
