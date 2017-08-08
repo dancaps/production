@@ -11,6 +11,7 @@ runner_assignments = {}
 # Gets the number of runners on the team [1-16]
 while True:
     while True:
+        print("")
         try:
             number_runners = int(input("Enter the number of runners on your team [1 thru 16]: "))
             break
@@ -51,7 +52,7 @@ print(" " * 25)
 print("{:<15} {}".format('Runner #', 'Name'))
 print("{:<15} {}".format('--------', '----'))
 for k, v in sorted(runner_assignments.items()):
-    print("{:<15} {}".format(k, v.capitalize()))
+    print("{:<15} {}".format(k, v.title()))
 print(" ")
 print("Thank you for using my program!")
 print(" ")
