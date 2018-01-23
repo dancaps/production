@@ -1,21 +1,14 @@
 import requests
 import boto3
 import json
-from pprint import pprint
+from time import sleep
 
 # variables
-cc_api_key = ''
+friendly_name = ''
 aws_access_key = ''
 aws_secret_key = ''
-friendly_name = ''
-cc_account_id = ''
-cc_external_id = ''
-aws_assume_role_policy = {"Version": "2012-10-17",
-                              "Statement": {
-                                           "Effect": "Allow",
-                                           "Action": "sts:AssumeRole",
-                                           "Principal": {"AWS": cc_account_id},
-                                           "Condition": {"StringEquals": {"sts:ExternalId": cc_external_id}}}}
+cc_api_key = ''
+cc_api_url = 'https://api.cloudcheckr.com/api/account.json/{0}'
 
 def main():
     # this is where the magic happens
@@ -24,11 +17,10 @@ def main():
     global aws_access_key
     global aws_secret_key
     global friendly_name
-    global cc_account_id
-    global cc_external_id
     global aws_assume_role_policy
+    global cc_api_url
 
-    # information gathering
+    # user information gathering
     if len(cc_api_key) < 1:
          cc_api_key = raw_input('What is your cloudcheckr API key?')
     if len(aws_access_key) < 1:
@@ -37,19 +29,54 @@ def main():
     if len(friendly_name) < 1:
         friendly_name = raw_input('What is the friendly name of the account you want to create?')
 
+    print('The user information has been gathered')
+
     # retrieves a dictionary filled with aws account information
     aws_information = get_aws_information(aws_access_key, aws_secret_key)
+
+    print('The aws account information has been retrieved.')
 
     # checking to see if the cloudcheckr account name already exists
     if cc_account_id_check(cc_api_key, aws_information['account']):
         print("An account with this id already exists. Please try again.")
         exit()
 
+    print('There is no account with the same account number in Cloudcheckr.')
+
     # get cloudcheckr policy json
     cc_policy = requests.get('https://s3.amazonaws.com/checkr3/CC_IAM_FullPolicy.json').json()
 
+    print('The cloudcheckr json policy has been downloaded from the web.')
+    
+    # creating the cloudcheckr account and getting the account id and external id returned
+    cc_account = create_new_cc_account(cc_api_key, cc_api_url, friendly_name)
+
+    print('The cloudcheckr account has been created')
+
+    # building the aws role policy based on the information returned when creating the cloudcheckr account.
+    aws_assume_role_policy = {"Version": "2012-10-17",
+                          "Statement": {"Effect": "Allow",
+                                        "Action": "sts:AssumeRole",
+                                        "Principal": {"AWS": cc_account['role_account_id']},
+                                        "Condition": {"StringEquals": {"sts:ExternalId": cc_account['cc_external_id']}}}}
+
+    print('The account to account aws role policy has been created.')
+
     # send the cc policy and roles to aws to create the policy
-    print(create_aws_requirements(aws_assume_role_policy, aws_access_key, aws_secret_key, cc_policy))
+    aws_requirements = create_aws_requirements(aws_assume_role_policy, aws_access_key, aws_secret_key, cc_policy)
+
+    print('The policy and role in aws has been created and linked to cloudcheckr')
+
+    # this gives cloudcheckr time to initialize the account before adding the arn. Without this you get an error.
+    sleep(20)
+    
+    print('Im awake again. Starting the funcion')
+    
+    # add the role arn to the cloudcheckr account
+    add_aws_arn_to_cc_account(cc_api_key, cc_api_url, aws_requirements['role_arn'], friendly_name)
+
+    print('The cloudcheckr account was linked back to the aws account.')
+    print('The inital cloudcheckr scan has started. Have a nice day!!!')
 
 
 def cc_account_id_check(cc_api_key, aws_account_id):
@@ -101,7 +128,8 @@ def create_aws_requirements(aws_assume_role_policy, aws_access_key, aws_secret_k
 
     # creating the role
     try:
-        role_response = client.create_role(RoleName='CloudCheckrRole', AssumeRolePolicyDocument=json.dumps(aws_assume_role_policy))
+        role_response = client.create_role(RoleName='CloudCheckrRole',
+                                           AssumeRolePolicyDocument=json.dumps(aws_assume_role_policy))
     except:
         print('A cloudcheckr role already exists with that name. Please try again.')
         exit()
@@ -112,7 +140,8 @@ def create_aws_requirements(aws_assume_role_policy, aws_access_key, aws_secret_k
 
     # attaching the policy to the role
     try:
-        attach_policy_response = client.attach_role_policy(RoleName='CloudCheckrRole', PolicyArn=policy_response['Policy']['Arn'])
+        attach_policy_response = client.attach_role_policy(RoleName='CloudCheckrRole',
+                                                           PolicyArn=policy_response['Policy']['Arn'])
     except:
         print('There was a problem attaching the policy to the role. Please try again.')
         exit()
@@ -127,8 +156,40 @@ def create_aws_requirements(aws_assume_role_policy, aws_access_key, aws_secret_k
     return return_payload
 
 
-def create_new_cc_account():
-    pass
+def create_new_cc_account(cc_api_key, cc_api_url, friendly_name):
+    # creates the cloudcheckr account. Returns the entire json
+
+    url = cc_api_url.format('add_account_v3').strip()
+    headers = {'Content-Type': 'application/json', 'access_key': cc_api_key}
+    data = {'account_name': friendly_name}
+
+    # creating the account
+    r = requests.post(url, headers=headers, data=json.dumps(data))
+
+    # verifying the account created successfully
+    if r.status_code != 200:
+        print('There was a problem creating the cloudcheckr account. Please try again.')
+        exit()
+
+    return r.json()
+
+
+def add_aws_arn_to_cc_account(cc_api_key, cc_api_url, aws_role_arn, friendly_name):
+    # adds the arn to the cloudcheckr account. Returns the entire json
+
+    url = cc_api_url.format('edit_credential').strip()
+    headers = {'Content-Type': 'application/json', 'access_key': cc_api_key}
+    data = {'use_account': friendly_name, 'aws_role_arn': aws_role_arn}
+
+    # adding the arn to the cloudcheckr account
+    r = requests.post(url, headers=headers, data=json.dumps(data))
+
+    # checking to make sure the arn was added successfully
+    if r.status_code != 200:
+        print('There was a problem adding the aws role arn to the cloudcheckr account. Please try again.')
+        exit()
+
+    return r.json()
 
 
 if __name__ == '__main__':
