@@ -47,7 +47,7 @@ def main():
     cc_policy = requests.get('https://s3.amazonaws.com/checkr3/CC_IAM_FullPolicy.json').json()
 
     print('The cloudcheckr json policy has been downloaded from the web.')
-    
+
     # creating the cloudcheckr account and getting the account id and external id returned
     cc_account = create_new_cc_account(cc_api_key, cc_api_url, friendly_name)
 
@@ -69,9 +69,7 @@ def main():
 
     # this gives cloudcheckr time to initialize the account before adding the arn. Without this you get an error.
     sleep(20)
-    
-    print('Im awake again. Starting the funcion')
-    
+
     # add the role arn to the cloudcheckr account
     add_aws_arn_to_cc_account(cc_api_key, cc_api_url, aws_requirements['role_arn'], friendly_name)
 
